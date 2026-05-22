@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
 import { Board } from './components/Board';
 import { Room, PlayerColor } from './types';
-import { Copy, PlusSquare, Dice5, SendHorizontal, Home, LogOut, RefreshCcw } from 'lucide-react';
+import { Copy, PlusSquare, Dice5, SendHorizontal, RefreshCcw } from 'lucide-react';
 
 const SOCKET_URL = import.meta.env.VITE_APP_URL || window.location.origin;
 
@@ -21,11 +21,9 @@ export default function App() {
   const [myId, setMyId] = useState<string>('');
   const [myColor, setMyColor] = useState<PlayerColor | null>(null);
   
-  // UI states
   const [playerCountSelect, setPlayerCountSelect] = useState<number>(4);
   const [chatInput, setChatInput] = useState('');
   
-  // Load or create player ID
   useEffect(() => {
     let savedId = localStorage.getItem('ludoPlayerId');
     if (!savedId) {
@@ -48,7 +46,6 @@ export default function App() {
     newSocket.on('connect', () => {
       console.log('Connected to server');
       if (roomId) {
-        // Auto join
         newSocket.emit('joinRoom', { roomId, playerId: myId }, (res: any) => {
           if (res.error) {
             alert(res.error);
@@ -75,7 +72,6 @@ export default function App() {
     });
 
     newSocket.on('gameReset', () => {
-        // Server wiped game, go back
         setRoomId(null);
         setRoom(null);
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -118,12 +114,10 @@ export default function App() {
 
   const startNewGame = () => {
       if(!socket || !room) return;
-      if(window.confirm("Are you sure? This will delete the current game for everyone.")) {
+      if(window.confirm("End this game and start a new one? All data will be removed immediately.")) {
           socket.emit('startNewGame', {roomId: room.id});
       }
   }
-
-  // --- RENDERING ---
 
   if (!roomId || !room) {
     return (
@@ -171,49 +165,50 @@ export default function App() {
   const myTurn = room.activeColor === myColor;
 
   return (
-    <div className="fixed inset-0 bg-slate-50 flex flex-col font-sans">
+    <div className="fixed inset-0 bg-slate-100 flex flex-col font-sans overflow-hidden">
       {/* Header - Minimal Branding */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-20">
+      <header className="bg-white border-b border-slate-200 px-3 py-2 flex items-center justify-between shrink-0 shadow-sm z-20 h-14">
         <div className="flex items-center gap-2">
-           <div className="w-8 h-8 bg-red-500 rounded flex items-center justify-center text-white font-black text-sm">সং</div>
-           <h1 className="font-bold text-slate-800 hidden sm:block tracking-tight text-lg">সংকেত Ludo</h1>
+           <div className="bg-red-500 rounded px-2 py-1 flex items-center justify-center text-white font-black text-sm tracking-widest leading-none">সংকেত</div>
+           <h1 className="font-bold text-slate-800 hidden sm:block tracking-tight text-md leading-none">Ludo</h1>
         </div>
         
-        {room.gameState === 'waiting' && (
-           <button 
-             onClick={() => navigator.clipboard.writeText(window.location.href)}
-             className="flex items-center gap-2 text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-medium border border-blue-100"
-           >
-              <Copy className="w-4 h-4" /> Copy Invite Link ({room.players.length}/{room.maxPlayers})
-           </button>
-        )}
+        <div className="flex gap-2">
+          {room.gameState === 'waiting' && (
+             <button 
+               onClick={() => navigator.clipboard.writeText(window.location.href)}
+               className="flex items-center gap-1.5 text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-md hover:bg-blue-100 font-bold border border-blue-100"
+             >
+                <Copy className="w-4 h-4" /> <span className="hidden sm:inline">Invite ({room.players.length}/{room.maxPlayers})</span>
+             </button>
+          )}
 
-        <button 
-           onClick={startNewGame}
-           className="flex items-center gap-1.5 text-xs sm:text-sm bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-200 font-medium"
-        >
-           <RefreshCcw className="w-4 h-4" /> <span>Start New Game</span>
-        </button>
+          <button 
+             onClick={startNewGame}
+             className="flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200 font-bold"
+          >
+             <RefreshCcw className="w-4 h-4" /> <span className="hidden sm:inline">Restart</span>
+          </button>
+        </div>
       </header>
 
       {/* Main Board Area - Flex 1 */}
-      <main className="flex-1 min-h-0 relative flex flex-col md:flex-row items-center justify-center gap-8 p-4">
+      <main className="flex-1 min-h-0 flex flex-col items-center justify-center relative p-2 md:p-4 gap-3">
          
-         <div className="relative w-full max-w-[500px]">
+         <div className="relative w-full h-full max-h-[100vmin] max-w-[100vmin] flex items-center justify-center shrink">
              {/* Ephemeral Chat Bubbles */}
              {room.players.map(p => {
                if (!p.latestMessage) return null;
                
-               // Position based on color
                let posClasses = '';
-               if (p.color === 'red') posClasses = 'top-0 left-0 -translate-x-4 -translate-y-full';
-               if (p.color === 'green') posClasses = 'top-0 right-0 translate-x-4 -translate-y-full';
-               if (p.color === 'yellow') posClasses = 'bottom-0 right-0 translate-x-4 translate-y-full';
-               if (p.color === 'blue') posClasses = 'bottom-0 left-0 -translate-x-4 translate-y-full';
+               if (p.color === 'red') posClasses = 'top-4 left-4';
+               if (p.color === 'green') posClasses = 'top-4 right-4';
+               if (p.color === 'yellow') posClasses = 'bottom-4 right-4';
+               if (p.color === 'blue') posClasses = 'bottom-4 left-4';
                
                return (
                  <div key={`chat-${p.id}`} className={`absolute z-50 ${posClasses} pointer-events-none transition-all`}>
-                    <div className="bg-slate-800 text-white text-xs md:text-sm px-3 py-2 rounded-xl rounded-bl-sm shadow-xl max-w-[120px] md:max-w-[160px] truncate animate-in fade-in slide-in-from-bottom-2">
+                    <div className="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-xl shadow-xl max-w-[120px] truncate animate-in zoom-in">
                        {p.latestMessage}
                     </div>
                  </div>
@@ -230,69 +225,71 @@ export default function App() {
              />
          </div>
 
-         {/* Controls Area */}
+         {/* Compact Controls Area */}
          {room.gameState === 'playing' && (
-           <div className="shrink-0 w-full max-w-[300px] flex flex-col gap-4">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center flex flex-col items-center">
-                 <p className="text-sm text-slate-500 uppercase tracking-widest font-bold mb-4">Current Turn</p>
-                 <div className="flex items-center gap-3 justify-center mb-6">
-                    <div className={`w-4 h-4 rounded-full ${colorMapClasses[room.activeColor]} shadow-md`}></div>
-                    <span className="text-xl font-black capitalize text-slate-800">{room.activeColor}</span>
-                 </div>
-                 
-                 <div className="h-24 flex items-center justify-center mb-6 w-full">
+           <div className="shrink-0 w-full max-w-[500px] h-16 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center px-4 justify-between transition-all">
+              <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${colorMapClasses[room.activeColor]} shadow-inner ${myTurn ? 'animate-pulse' : ''}`}></div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Turn</span>
+                    <span className="text-sm font-black capitalize text-slate-800 leading-none mt-1">{room.activeColor}</span>
+                  </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 flex items-center justify-center relative">
                     {room.diceValue ? (
-                      <div className="w-16 h-16 bg-slate-900 text-white rounded-xl flex items-center justify-center text-4xl font-black shadow-lg animate-in zoom-in-50">
+                      <div className="w-10 h-10 bg-slate-900 border-2 border-slate-700 text-white rounded-lg flex items-center justify-center text-xl font-black shadow-lg animate-in zoom-in">
                          {room.diceValue}
                       </div>
                     ) : (
-                      <Dice5 className={`w-16 h-16 text-slate-200 ${myTurn ? 'animate-bounce text-slate-400' : ''}`} />
+                      <Dice5 className={`w-8 h-8 text-slate-300 ${myTurn ? 'animate-bounce text-slate-400' : ''}`} />
                     )}
-                 </div>
+                  </div>
 
-                 {myTurn ? (
-                   <button 
-                     onClick={rollDice}
-                     disabled={room.diceRolled}
-                     className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${!room.diceRolled ? `${colorMapClasses[myColor!]} text-white shadow-xl hover:scale-105 active:scale-95` : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
-                   >
-                     {room.diceRolled ? 'Move a token' : 'Roll Dice'}
-                   </button>
-                 ) : (
-                   <div className="text-slate-400 font-medium py-4">Waiting for {room.activeColor}...</div>
-                 )}
+                  {myTurn ? (
+                    <button 
+                      onClick={rollDice}
+                      disabled={room.diceRolled}
+                      className={`w-24 h-10 rounded-lg font-bold text-sm flex items-center justify-center transition-all ${!room.diceRolled ? `${colorMapClasses[myColor!]} text-white shadow-md active:scale-95` : 'bg-slate-100 text-slate-400'}`}
+                    >
+                      {room.diceRolled ? 'MOVE' : 'ROLL'}
+                    </button>
+                  ) : (
+                    <div className="w-24 h-10 text-xs text-slate-400 font-medium flex items-center justify-center bg-slate-50 rounded-lg">Waiting</div>
+                  )}
               </div>
            </div>
          )}
          
          {room.gameState === 'finished' && (
-             <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-30 flex items-center justify-center">
-                 <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm">
-                    <h2 className="text-3xl font-black text-slate-800 mb-4">Game Over!</h2>
-                    <button onClick={startNewGame} className="w-full py-3 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600">Start New Game</button>
+             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex items-center justify-center">
+                 <div className="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-full animate-in zoom-in">
+                    <h2 className="text-3xl font-black text-slate-800 mb-2">Game Over!</h2>
+                    <p className="text-sm text-slate-500 mb-6">Return to lobby to play again</p>
+                    <button onClick={startNewGame} className="w-full py-3 bg-red-500 text-white font-bold rounded-xl shadow-md">New Game</button>
                  </div>
              </div>
          )}
-
       </main>
 
-      {/* Chat / Bottom Area - Instant Ephemeral Chat */}
-      <footer className="bg-white border-t border-slate-200 p-3 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
-         <form onSubmit={sendChat} className="flex gap-2 max-w-3xl mx-auto">
+      {/* compact chat */}
+      <footer className="bg-white border-t border-slate-200 p-2 shrink-0 shadow-sm z-20 h-14">
+         <form onSubmit={sendChat} className="flex gap-2 max-w-[500px] mx-auto h-full">
             <input 
               type="text" 
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
-              placeholder="Type a quick message or emoji..."
-              className="flex-1 bg-slate-100 border-none outline-none focus:ring-2 focus:ring-red-500 rounded-xl px-4 py-3 placeholder-slate-400 text-slate-800"
+              placeholder="Message or emoji..."
+              className="flex-1 bg-slate-100 border-none outline-none focus:ring-1 focus:ring-slate-300 rounded-lg px-3 py-2 placeholder-slate-400 text-slate-800 text-sm"
               maxLength={40}
             />
             <button 
               type="submit"
               disabled={!chatInput.trim()}
-              className="bg-slate-900 text-white w-12 h-12 rounded-xl flex items-center justify-center shrink-0 disabled:opacity-50 hover:bg-slate-800 transition-colors"
+              className="bg-slate-900 text-white w-10 h-full rounded-lg flex items-center justify-center shrink-0 disabled:opacity-50 hover:bg-slate-800 transition-colors"
             >
-              <SendHorizontal className="w-5 h-5" />
+              <SendHorizontal className="w-4 h-4" />
             </button>
          </form>
       </footer>
