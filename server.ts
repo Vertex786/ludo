@@ -40,6 +40,7 @@ export interface Room {
   gameState: "waiting" | "playing" | "finished";
   sixCount: number; // to handle 3 sixes = pass turn
   turnTimeout?: NodeJS.Timeout;
+  turnEndTime?: number;
 }
 
 const rooms = new Map<string, Room>();
@@ -66,6 +67,7 @@ function passTurn(room: Room) {
   room.diceValue = null;
   room.diceRolled = false;
   room.sixCount = 0;
+  room.turnEndTime = Date.now() + 20000;
 }
 
 io.on("connection", (socket) => {
@@ -95,8 +97,11 @@ io.on("connection", (socket) => {
       if (room.players.length >= room.maxPlayers && room.gameState !== "waiting") {
          return callback({ error: "Room is full or game started" });
       }
-      // Assign next available color from standard mapping
-      const colorsToAssign = ALL_COLORS.slice(0, room.maxPlayers);
+      // Assign next available color prioritizing diagonals for 2 players
+      let colorsToAssign = ALL_COLORS.slice(0, room.maxPlayers);
+      if (room.maxPlayers === 2) colorsToAssign = ["red", "yellow"];
+      if (room.maxPlayers === 3) colorsToAssign = ["red", "green", "blue"];
+      
       const usedColors = room.players.map(p => p.color);
       const nextColor = colorsToAssign.find(c => !usedColors.includes(c));
       
@@ -117,6 +122,7 @@ io.on("connection", (socket) => {
       room.gameState = "playing";
       // Determine active player (the first entered color)
       room.activeColor = room.players[0].color;
+      room.turnEndTime = Date.now() + 20000;
     }
 
     io.to(room.id).emit("roomState", room);
@@ -135,6 +141,7 @@ io.on("connection", (socket) => {
     // const dice = 6; // for testing
     room.diceValue = dice;
     room.diceRolled = true;
+    room.turnEndTime = Date.now() + 20000;
 
     if (dice === 6) {
       room.sixCount += 1;
@@ -234,6 +241,7 @@ io.on("connection", (socket) => {
         player.hasFinished = true;
       }
       
+      // End game logic and turn passing
       const activePlayersCount = room.players.filter(p => !p.hasFinished).length;
       if (activePlayersCount <= 1 && room.players.length > 1) {
         room.gameState = "finished";
@@ -241,6 +249,7 @@ io.on("connection", (socket) => {
         if (extraTurn || dice === 6) {
           room.diceRolled = false;
           room.diceValue = null;
+          room.turnEndTime = Date.now() + 20000;
         } else {
           passTurn(room);
         }
@@ -306,6 +315,16 @@ function getAbsolutePosition(color: PlayerColor, pathPos: number): number {
     // pathPos is 1 to 51
     return (START_OFFSETS[color] + (pathPos - 1)) % 52;
 }
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [roomId, room] of rooms.entries()) {
+    if (room.gameState === "playing" && room.turnEndTime && now >= room.turnEndTime) {
+       passTurn(room);
+       io.to(roomId).emit("roomState", room);
+    }
+  }
+}, 1000);
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

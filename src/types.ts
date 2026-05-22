@@ -17,4 +17,5 @@ export interface Room {
   diceValue: number | null;
   diceRolled: boolean;
   gameState: "waiting" | "playing" | "finished";
+  turnEndTime?: number;
 }
