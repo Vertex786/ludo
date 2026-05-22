@@ -76,39 +76,41 @@ export const Board: React.FC<BoardProps> = ({ players, onTokenClick, myId, activ
   const me = players.find(p => p.id === myId);
   const myTurn = me?.color === activeColor;
 
-  const BASE_BG_CLASSES = { red: 'bg-[#ff0000]', green: 'bg-[#00b050]', yellow: 'bg-[#ffff00]', blue: 'bg-[#0070c0]' };
-
-  const renderBase = (col: number, row: number, color: PlayerColor) => (
-    <div 
-      key={`base-${color}`}
-      className={`absolute ${BASE_BG_CLASSES[color]} border-2 border-black/20`}
-      style={{
-        left: `${(col / 15) * 100}%`,
-        top: `${(row / 15) * 100}%`,
-        width: `${(6 / 15) * 100}%`,
-        height: `${(6 / 15) * 100}%`,
-      }}
-    >
-        <div className="absolute top-[15%] left-[15%] w-[70%] h-[70%] bg-white rounded-md shadow flex">
-             <div className="w-[35%] h-[35%] absolute top-[10%] left-[10%] rounded-full shadow-inner flex items-center justify-center border border-gray-300">
-                 <div className={`w-3/4 h-3/4 rounded-full ${BASE_BG_CLASSES[color]}`}></div>
-             </div>
-             <div className="w-[35%] h-[35%] absolute top-[10%] right-[10%] rounded-full shadow-inner flex items-center justify-center border border-gray-300">
-                 <div className={`w-3/4 h-3/4 rounded-full ${BASE_BG_CLASSES[color]}`}></div>
-             </div>
-             <div className="w-[35%] h-[35%] absolute bottom-[10%] left-[10%] rounded-full shadow-inner flex items-center justify-center border border-gray-300">
-                 <div className={`w-3/4 h-3/4 rounded-full ${BASE_BG_CLASSES[color]}`}></div>
-             </div>
-             <div className="w-[35%] h-[35%] absolute bottom-[10%] right-[10%] rounded-full shadow-inner flex items-center justify-center border border-gray-300">
-                 <div className={`w-3/4 h-3/4 rounded-full ${BASE_BG_CLASSES[color]}`}></div>
-             </div>
-        </div>
-    </div>
-  );
+  const renderBase = (col: number, row: number, color: PlayerColor) => {
+    const bgClasses = { red: 'bg-red-600', green: 'bg-green-600', yellow: 'bg-[#d2a316]', blue: 'bg-sky-500' };
+    const darkClasses = { red: 'bg-red-900', green: 'bg-green-900', yellow: 'bg-yellow-800', blue: 'bg-sky-800' };
+    return (
+      <div 
+        key={`base-${color}`}
+        className={`absolute ${bgClasses[color]} border border-black/20`}
+        style={{
+          left: `${(col / 15) * 100}%`,
+          top: `${(row / 15) * 100}%`,
+          width: `${(6 / 15) * 100}%`,
+          height: `${(6 / 15) * 100}%`,
+        }}
+      >
+          <div className="absolute top-[15%] left-[15%] w-[70%] h-[70%] bg-white rounded-xl shadow border border-black/20 flex">
+               <div className={`w-[30%] h-[30%] absolute top-[12%] left-[12%] rounded-full ${darkClasses[color]} shadow-inner flex items-center justify-center`}>
+                   <div className={`w-2/3 h-2/3 rounded-full ${bgClasses[color]}`}></div>
+               </div>
+               <div className={`w-[30%] h-[30%] absolute top-[12%] right-[12%] rounded-full ${darkClasses[color]} shadow-inner flex items-center justify-center`}>
+                   <div className={`w-2/3 h-2/3 rounded-full ${bgClasses[color]}`}></div>
+               </div>
+               <div className={`w-[30%] h-[30%] absolute bottom-[12%] left-[12%] rounded-full ${darkClasses[color]} shadow-inner flex items-center justify-center`}>
+                   <div className={`w-2/3 h-2/3 rounded-full ${bgClasses[color]}`}></div>
+               </div>
+               <div className={`w-[30%] h-[30%] absolute bottom-[12%] right-[12%] rounded-full ${darkClasses[color]} shadow-inner flex items-center justify-center`}>
+                   <div className={`w-2/3 h-2/3 rounded-full ${bgClasses[color]}`}></div>
+               </div>
+          </div>
+      </div>
+    );
+  };
 
   const starSVG = (
-    <svg viewBox="0 0 24 24" fill="#a1a1aa" className="w-[60%] h-[60%]">
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+    <svg viewBox="0 0 24 24" fill="transparent" stroke="#1e293b" strokeWidth="1.5" className="w-[60%] h-[60%] opacity-70">
+      <path strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
     </svg>
   );
 
@@ -124,32 +126,32 @@ export const Board: React.FC<BoardProps> = ({ players, onTokenClick, myId, activ
 
       let isPath = false;
       let pathColor = 'bg-white';
+      const bgClasses = { red: 'bg-red-600', green: 'bg-green-600', yellow: 'bg-[#d2a316]', blue: 'bg-sky-500' };
       
       // Starting positions (colored arrow squares)
-      if (c === 1 && r === 6) pathColor = BASE_BG_CLASSES['red'];
-      else if (c === 8 && r === 1) pathColor = BASE_BG_CLASSES['green'];
-      else if (c === 13 && r === 8) pathColor = BASE_BG_CLASSES['yellow'];
-      else if (c === 6 && r === 13) pathColor = BASE_BG_CLASSES['blue'];
+      if (c === 1 && r === 6) pathColor = bgClasses['red'];
+      else if (c === 8 && r === 1) pathColor = bgClasses['green'];
+      else if (c === 13 && r === 8) pathColor = bgClasses['yellow'];
+      else if (c === 6 && r === 13) pathColor = bgClasses['blue'];
       // Home straights
-      else if (r === 7 && c >= 1 && c <= 5) pathColor = BASE_BG_CLASSES['red'];
-      else if (c === 7 && r >= 1 && r <= 5) pathColor = BASE_BG_CLASSES['green'];
-      else if (r === 7 && c >= 9 && c <= 13) pathColor = BASE_BG_CLASSES['yellow'];
-      else if (c === 7 && r >= 9 && r <= 13) pathColor = BASE_BG_CLASSES['blue'];
+      else if (r === 7 && c >= 1 && c <= 5) pathColor = bgClasses['red'];
+      else if (c === 7 && r >= 1 && r <= 5) pathColor = bgClasses['green'];
+      else if (r === 7 && c >= 9 && c <= 13) pathColor = bgClasses['yellow'];
+      else if (c === 7 && r >= 9 && r <= 13) pathColor = bgClasses['blue'];
 
       let innerContent = null;
       const starPositions = [
-        {c: 1, r: 6}, {c: 8, r: 1}, {c: 13, r: 8}, {c: 6, r: 13}, // Starts
-        {c: 2, r: 8}, {c: 6, r: 2}, {c: 12, r: 6}, {c: 8, r: 12}  // Safes
+        {c: 6, r: 2}, {c: 12, r: 6}, {c: 8, r: 12}, {c: 2, r: 8}
       ];
       if (starPositions.some(s => s.c === c && s.r === r)) {
           innerContent = starSVG;
       }
-      // Draw arrow on starting cells over the color
-      if (c === 1 && r === 6) innerContent = <div className="text-white font-bold text-lg leading-none">→</div>;
-      if (c === 8 && r === 1) innerContent = <div className="text-white font-bold text-lg leading-none">↓</div>;
-      if (c === 13 && r === 8) innerContent = <div className="text-white font-bold text-lg leading-none">←</div>;
-      if (c === 6 && r === 13) innerContent = <div className="text-white font-bold text-lg leading-none">↑</div>;
-
+      
+      // Draw arrows on the empty adjacent entry cells
+      if (c === 0 && r === 6) innerContent = <div className="text-red-600 font-bold text-lg md:text-xl leading-none mt-[-2px]">→</div>;
+      if (c === 8 && r === 0) innerContent = <div className="text-green-600 font-bold text-lg md:text-xl leading-none mt-[-2px]">↓</div>;
+      if (c === 14 && r === 8) innerContent = <div className="text-yellow-600 font-bold text-lg md:text-xl leading-none mt-[-2px]">←</div>;
+      if (c === 6 && r === 14) innerContent = <div className="text-sky-500 font-bold text-lg md:text-xl leading-none mt-[-2px]">↑</div>;
 
       cells.push(
         <div 
@@ -164,12 +166,12 @@ export const Board: React.FC<BoardProps> = ({ players, onTokenClick, myId, activ
   }
 
   const centerTriangle = (
-    <div className="absolute z-0 block border border-black/30" style={{ left: '40%', top: '40%', width: '20%', height: '20%' }}>
+    <div className="absolute z-0 block border border-black/10" style={{ left: '40%', top: '40%', width: '20%', height: '20%' }}>
       <svg viewBox="0 0 100 100" width="100%" height="100%" preserveAspectRatio="none">
-        <polygon points="0,0 50,50 0,100" fill="#ff0000" stroke="#000" strokeWidth="0.5"/>
-        <polygon points="0,0 100,0 50,50" fill="#00b050" stroke="#000" strokeWidth="0.5"/>
-        <polygon points="100,0 100,100 50,50" fill="#ffff00" stroke="#000" strokeWidth="0.5"/>
-        <polygon points="0,100 100,100 50,50" fill="#0070c0" stroke="#000" strokeWidth="0.5"/>
+        <polygon points="0,0 50,50 0,100" fill="#dc2626" stroke="#000" strokeWidth="0.5"/>
+        <polygon points="0,0 100,0 50,50" fill="#16a34a" stroke="#000" strokeWidth="0.5"/>
+        <polygon points="100,0 100,100 50,50" fill="#d2a316" stroke="#000" strokeWidth="0.5"/>
+        <polygon points="0,100 100,100 50,50" fill="#0ea5e9" stroke="#000" strokeWidth="0.5"/>
       </svg>
     </div>
   );

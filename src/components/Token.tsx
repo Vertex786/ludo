@@ -17,19 +17,43 @@ interface TokenProps {
 }
 
 const bgColors = {
-  red: '#ff0000',
-  green: '#00b050',
-  yellow: '#ffff00',
-  blue: '#0070c0',
+  red: '#e11d48',
+  green: '#16a34a',
+  yellow: '#eab308',
+  blue: '#0ea5e9',
+}
+
+const darkColors = {
+  red: '#881337',
+  green: '#14532d',
+  yellow: '#854d0e',
+  blue: '#0c4a6e',
 }
 
 const TokenPinSVG = ({ color }: { color: string }) => (
-  <svg viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-md">
-    <path d="M12 0C5.373 0 0 5.373 0 12C0 21 12 36 12 36C12 36 24 21 24 12C24 5.373 18.627 0 12 0Z" fill={color} stroke="#1e293b" strokeWidth="1.5" strokeLinejoin="round"/>
-    <circle cx="12" cy="11" r="4.5" fill="white" />
-    <circle cx="12" cy="11" r="2.5" fill={color} opacity={0.6} />
+  <svg viewBox="0 0 40 56" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[120%] h-[120%] drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] z-20">
+    <path d="M20 2C9.5 2 1 10.5 1 21C1 36 20 54 20 54C20 54 39 36 39 21C39 10.5 30.5 2 20 2Z" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1"/>
+    <path d="M20 5C11.16 5 4 12.16 4 21C4 32.5 20 45 20 45C20 45 36 32.5 36 21C36 12.16 28.84 5 20 5Z" fill="#ffffff" />
+    <circle cx="20" cy="20" r="10" fill={color} stroke="#000000" strokeWidth="1" strokeOpacity="0.2"/>
+    <circle cx="17" cy="17" r="4" fill="#ffffff" opacity="0.6"/>
   </svg>
 );
+
+const GearRing = ({ color, darkColor }: { color: string, darkColor: string }) => {
+  return (
+    <svg viewBox="0 0 100 100" className="absolute w-[180%] h-[180%] bottom-[-30%] animate-[spin_4s_linear_infinite] drop-shadow-lg z-10 origin-center pointer-events-none">
+      <g fill={darkColor}>
+        <circle cx="50" cy="50" r="32" />
+        {[0, 45, 90, 135].map(rot => (
+          <rect key={rot} x="41" y="10" width="18" height="80" rx="3" transform={`rotate(${rot} 50 50)`} />
+        ))}
+      </g>
+      <circle cx="50" cy="50" r="24" fill="white" />
+      <circle cx="50" cy="50" r="16" fill={color} />
+      <circle cx="50" cy="50" r="8" fill={darkColor} />
+    </svg>
+  )
+}
 
 export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, diceValue, onClick, pos, scale, offsetX, offsetY }) => {
   const isPlayable = isMine && canMove && pos !== 57 && (
@@ -42,7 +66,6 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
   useEffect(() => {
      const animateHop = async () => {
         if (pos > prevPos && pos - prevPos <= 6 && prevPos > 0 && pos !== 57) { 
-            // Hop on normal path
             for(let i = prevPos + 1; i <= pos; i++) {
                 const c = getTokenCoordinates(color, i, tokenIdx);
                 if (i === pos) {
@@ -52,7 +75,6 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
                 }
             }
         } else {
-            // Cut or out of base or directly to 57 -> jump
             const c = getTokenCoordinates(color, pos, tokenIdx);
             controls.start({ left: `${(c.x + offsetX)/15*100}%`, top: `${(c.y + offsetY)/15*100}%`, scale, transition: { duration: 0.3 } });
         }
@@ -63,20 +85,11 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
          animateHop();
      } else {
          const c = getTokenCoordinates(color, pos, tokenIdx);
-         // Just structural update due to token clustering
          controls.start({ left: `${(c.x + offsetX)/15*100}%`, top: `${(c.y + offsetY)/15*100}%`, scale, transition: { duration: 0.25 } });
      }
   }, [pos, offsetX, offsetY, scale, color, tokenIdx, controls, prevPos]);
 
-  const pulseClass = isPlayable 
-     ? 'drop-shadow-[0_0_8px_rgba(255,255,255,1)] cursor-pointer z-30' 
-     : 'z-10';
-
-  let pathColorCSS = '';
-  if (color === 'red') pathColorCSS = 'border-red-400';
-  if (color === 'green') pathColorCSS = 'border-green-400';
-  if (color === 'yellow') pathColorCSS = 'border-yellow-400';
-  if (color === 'blue') pathColorCSS = 'border-blue-400';
+  const pulseClass = isPlayable ? 'cursor-pointer z-30' : 'z-10';
 
   return (
     <motion.div
@@ -93,18 +106,9 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
         if (isPlayable) onClick();
       }}
     >
-      <div className="w-[85%] h-full relative flex items-end justify-center transition-transform hover:scale-110">
-         {/* Ring System when playable */}
-         {isPlayable && (
-             <div className={`absolute bottom-[0%] w-[150%] aspect-square rounded-full border-[3px] border-dashed ${pathColorCSS} animate-[spin_3s_linear_infinite] opacity-60 pointer-events-none origin-center transform-gpu`} style={{ zIndex: -1 }} />
-         )}
-         
+      <div className={`w-[85%] h-full relative flex items-end justify-center transition-transform ${isPlayable ? 'hover:scale-110' : ''}`}>
+         {isPlayable && <GearRing color={bgColors[color]} darkColor={darkColors[color]} />}
          <TokenPinSVG color={bgColors[color]} />
-         {isPlayable && pos === 0 && (
-            <div className="absolute -top-4 text-[16px] text-white animate-bounce drop-shadow-md">
-               👇
-            </div>
-         )}
       </div>
     </motion.div>
   );
