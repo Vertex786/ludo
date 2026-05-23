@@ -6,6 +6,7 @@ export interface Player {
   tokens: number[];
   hasFinished: boolean;
   latestMessage?: string;
+  lastDiceValue?: number | null;
 }
 
 export interface Room {

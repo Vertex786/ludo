@@ -141,6 +141,7 @@ io.on("connection", (socket) => {
     // const dice = 6; // for testing
     room.diceValue = dice;
     room.diceRolled = true;
+    (player as any).lastDiceValue = dice;
     room.turnEndTime = Date.now() + 30000;
 
     if (dice === 6) {
@@ -286,6 +287,29 @@ io.on("connection", (socket) => {
         playerMessageTimers.delete(timerKey);
     }, 5000);
     playerMessageTimers.set(timerKey, timer);
+  });
+
+  socket.on("quitRoom", (data: { roomId: string, playerId: string }) => {
+    const room = rooms.get(data.roomId);
+    if (room) {
+      const idx = room.players.findIndex(p => p.id === data.playerId);
+      if (idx !== -1) {
+        const wasActive = room.activeColor === room.players[idx].color;
+        room.players.splice(idx, 1);
+        room.maxPlayers = Math.max(room.players.length, 2); // Shrink max players if needed
+
+        if (room.players.length < 2 && room.gameState === "playing") {
+           // Not enough players to continue
+           io.to(room.id).emit("gameReset");
+           rooms.delete(room.id);
+        } else {
+           if (wasActive && room.gameState === "playing") {
+               passTurn(room);
+           }
+           io.to(room.id).emit("roomState", room);
+        }
+      }
+    }
   });
 
   socket.on("startNewGame", (data: { roomId: string }) => {

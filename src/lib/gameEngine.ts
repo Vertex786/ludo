@@ -44,7 +44,8 @@ export function rollDiceLocal(room: Room, myId: string): Room {
   if (!player || player.color !== room.activeColor || room.diceRolled) return room;
 
   const dice = Math.floor(Math.random() * 6) + 1;
-  let newRoom = { ...room, diceValue: dice, diceRolled: true, turnEndTime: Date.now() + 2000000 };
+  const newPlayers = room.players.map(p => p.id === myId ? { ...p, lastDiceValue: dice } : p);
+  let newRoom = { ...room, players: newPlayers, diceValue: dice, diceRolled: true, turnEndTime: Date.now() + 2000000 };
 
   if (dice === 6) {
     newRoom.sixCount += 1;
@@ -61,9 +62,8 @@ export function rollDiceLocal(room: Room, myId: string): Room {
     return false;
   });
 
-  if (!hasMove) {
-      return passTurn(newRoom);
-  }
+  // We do not auto-pass turn here in local mode, 
+  // so the UI has time to show the dice value. App.tsx will handle the auto-pass.
 
   return newRoom;
 }

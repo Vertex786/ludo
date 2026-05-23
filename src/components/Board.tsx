@@ -117,26 +117,6 @@ export const Board: React.FC<BoardProps> = ({ players, onTokenClick, myId, activ
                <div className={`w-[30%] h-[30%] absolute bottom-[12%] right-[12%] rounded-full ${darkClasses[color]} shadow-inner flex items-center justify-center`}>
                    <div className={`w-2/3 h-2/3 rounded-full ${bgClasses[color]}`}></div>
                </div>
-               
-               {/* Center Dice Overlay */}
-               {activeColor === color && (
-                   <div className="absolute inset-0 flex items-center justify-center z-40 animate-in zoom-in">
-                       <button 
-                           onClick={(e) => {
-                               e.stopPropagation();
-                               if (me?.color === activeColor && !diceRolled) rollDice();
-                           }}
-                           disabled={diceRolled || me?.color !== activeColor}
-                           className={`w-[45%] h-[45%] bg-white shadow-lg rounded-xl border-2 border-slate-200 flex items-center justify-center transition-all ${!diceRolled && me?.color === activeColor ? 'cursor-pointer hover:scale-110 shadow-red-500/20' : 'opacity-90'}`}
-                       >
-                           {diceValue ? (
-                               <DiceIcon val={diceValue} className={`w-full h-full p-1 text-${color === 'yellow' ? 'yellow-600' : `${color}-600`}`} />
-                           ) : (
-                               <DiceIcon val={null} className={`w-full h-full p-1 text-slate-300 ${me?.color === activeColor ? 'animate-bounce' : ''}`} />
-                           )}
-                       </button>
-                   </div>
-               )}
           </div>
       </div>
     );

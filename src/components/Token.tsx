@@ -41,7 +41,7 @@ const TokenPinSVG = ({ color }: { color: string }) => (
 
 const GearRing = ({ color, darkColor }: { color: string, darkColor: string }) => {
   return (
-    <svg viewBox="0 0 100 100" className="absolute w-[180%] h-[180%] bottom-[-30%] animate-[spin_4s_linear_infinite] drop-shadow-lg z-10 origin-center pointer-events-none">
+    <svg viewBox="0 0 100 100" className="absolute top-1/2 left-1/2 -ml-[90%] -mt-[90%] w-[180%] h-[180%] animate-[spin_4s_linear_infinite] drop-shadow-lg z-10 origin-center pointer-events-none">
       <g fill={darkColor}>
         <circle cx="50" cy="50" r="32" />
         {[0, 45, 90, 135].map(rot => (
@@ -97,10 +97,9 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
       animate={controls}
       style={{
          width: `${(1 / 15) * 100}%`,
-         height: `${(1.3 / 15) * 100}%`,
-         transform: 'translate(0%, -25%)'
+         height: `${(1 / 15) * 100}%`,
       }}
-      className={`absolute flex items-end justify-center ${pulseClass}`}
+      className={`absolute flex items-center justify-center ${pulseClass}`}
       onClick={(e) => {
         if (isPlayable) {
            e.stopPropagation();
@@ -108,12 +107,15 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
         }
       }}
     >
-      <div className={`w-[85%] h-full relative flex items-end justify-center transition-transform ${isPlayable ? 'hover:scale-110' : ''}`}>
-         {/* Fixed Circle Base Indicator */}
-         <div className="absolute bottom-[2%] w-[80%] aspect-square rounded-full bg-black/20 shadow-sm blur-[1px] pointer-events-none" />
+      <div className={`w-full h-full relative transition-transform ${isPlayable ? 'hover:scale-110' : ''}`}>
+         {/* Super clear base indicator ring perfectly centered on the cell */}
+         <div className={`absolute top-1/2 left-1/2 -ml-[35%] -mt-[35%] w-[70%] aspect-square rounded-full border-[3px] shadow-sm pointer-events-none ${isPlayable ? 'border-yellow-400 animate-pulse bg-white/20' : 'border-slate-800/20 bg-black/10'}`} style={{ transform: 'rotateX(55deg)' }} />
          
          {isPlayable && <GearRing color={bgColors[color]} darkColor={darkColors[color]} />}
-         <TokenPinSVG color={bgColors[color]} />
+         
+         <div className="absolute top-1/2 left-1/2 -ml-[60%] -mt-[135%] w-[120%] aspect-square drop-shadow-md flex items-center justify-center">
+             <TokenPinSVG color={bgColors[color]} />
+         </div>
       </div>
     </motion.div>
   );
