@@ -42,6 +42,7 @@ export default function App() {
   
   const [installPromptState, setInstallPromptState] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -55,12 +56,21 @@ export default function App() {
 
   const handleInstallClick = async () => {
     if (!installPromptState) return;
-    installPromptState.prompt();
-    const { outcome } = await installPromptState.userChoice;
-    if (outcome === 'accepted') {
+    setIsInstalling(true);
+    
+    try {
+        await installPromptState.prompt();
+        const { outcome } = await installPromptState.userChoice;
+        if (outcome === 'accepted') {
+            console.log("App installed");
+        }
+    } catch (err) {
+        console.error("Installation failed", err);
+    } finally {
+        setIsInstalling(false);
         setIsInstallable(false);
+        setInstallPromptState(null);
     }
-    setInstallPromptState(null);
   };
 
   // Load offline state on startup if exists
@@ -309,9 +319,19 @@ export default function App() {
              {isInstallable && (
                 <button 
                   onClick={handleInstallClick}
-                  className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm transition-colors"
+                  disabled={isInstalling}
+                  className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
                 >
-                  <Download className="w-3.5 h-3.5" /> Install App
+                  {isInstalling ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Installing...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" /> Install App
+                    </>
+                  )}
                 </button>
              )}
              <h1 className="text-4xl font-black tracking-tight mb-2">সংকেত Ludo</h1>

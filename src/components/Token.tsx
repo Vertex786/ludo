@@ -31,7 +31,7 @@ const darkColors = {
 }
 
 const TokenPinSVG = ({ color }: { color: string }) => (
-  <svg viewBox="0 0 40 56" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[120%] h-[120%] drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] z-20">
+  <svg viewBox="0 0 40 56" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
     <path d="M20 2C9.5 2 1 10.5 1 21C1 36 20 54 20 54C20 54 39 36 39 21C39 10.5 30.5 2 20 2Z" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1"/>
     <path d="M20 5C11.16 5 4 12.16 4 21C4 32.5 20 45 20 45C20 45 36 32.5 36 21C36 12.16 28.84 5 20 5Z" fill="#ffffff" />
     <circle cx="20" cy="20" r="10" fill={color} stroke="#000000" strokeWidth="1" strokeOpacity="0.2"/>
@@ -113,7 +113,8 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
          
          {isPlayable && <GearRing color={bgColors[color]} darkColor={darkColors[color]} />}
          
-         <div className="absolute top-1/2 left-1/2 -ml-[60%] -mt-[135%] w-[120%] aspect-square drop-shadow-md flex items-center justify-center">
+         {/* Pin Marker - bottom tip exactly touches cell center (offset by 3.5% to account for SVG path viewBox margin) */}
+         <div className="absolute left-1/2 bottom-1/2 -translate-x-1/2 translate-y-[3.5%] w-[90%] aspect-[40/56] z-20 pointer-events-none">
              <TokenPinSVG color={bgColors[color]} />
          </div>
       </div>
