@@ -113,8 +113,17 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
          
          {isPlayable && <GearRing color={bgColors[color]} darkColor={darkColors[color]} />}
          
-         {/* Pin Marker - bottom tip exactly touches cell center (offset by 3.5% to account for SVG path viewBox margin) */}
-         <div className="absolute left-1/2 bottom-1/2 -translate-x-1/2 translate-y-[3.5%] w-[90%] aspect-[40/56] z-20 pointer-events-none">
+         {/* Pin Marker - mathematically perfect alignment so the bottom tip (y=54 in a 56h viewBox) is exactly at the cell's center */ }
+         <div 
+            className="absolute z-20 pointer-events-none"
+            style={{
+               width: '85%',
+               aspectRatio: '40 / 56',
+               left: '50%',
+               top: '50%',
+               transform: 'translate(-50%, -96.4%)'
+            }}
+         >
              <TokenPinSVG color={bgColors[color]} />
          </div>
       </div>

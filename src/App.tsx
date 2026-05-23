@@ -43,6 +43,7 @@ export default function App() {
   const [installPromptState, setInstallPromptState] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -358,13 +359,13 @@ export default function App() {
                       onClick={createOfflineGame}
                       className="w-full py-4 bg-red-500 text-white rounded-xl font-bold text-lg hover:bg-red-600 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
                     >
-                      <MonitorSmartphone className="w-5 h-5" /> Play Offline (Local)
+                      <MonitorSmartphone className="w-5 h-5" /> অফলাইনে খেলুন
                     </button>
                     <button 
                       onClick={createGame}
                       className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
                     >
-                      <PlusSquare className="w-5 h-5" /> Play Online (Invite)
+                      <PlusSquare className="w-5 h-5" /> অনলাইনে খেলুন (Invite)
                     </button>
                   </div>
                   
@@ -415,10 +416,9 @@ export default function App() {
          localStorage.removeItem('ludoOfflineState');
          window.location.reload();
      } else {
-         if (socket) {
-             socket.emit('quitRoom', { roomId: room.id, playerId: myId });
+         if (socket && room) {
+             socket.emit('startNewGame', { roomId: room.id });
          }
-         window.location.href = '/';
      }
   };
 
@@ -435,13 +435,39 @@ export default function App() {
              onClick={startNewGameClick}
              className="flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-md hover:bg-slate-200 font-bold"
           >
-             <RefreshCcw className="w-4 h-4" /> <span className="hidden sm:inline">{playMode === 'offline' ? 'নতুন গেম' : 'কুইট করুন'}</span>
+             <RefreshCcw className="w-4 h-4" /> <span className="hidden sm:inline">নতুন গেম</span>
           </button>
         </div>
       </header>
 
       {/* Main Board Area - Flex 1 */}
       <main className="flex-1 min-h-0 flex flex-col items-center justify-center relative p-8 md:p-12 gap-3 overflow-hidden">
+         
+         {room.gameState === 'waiting' && playMode === 'online' && (
+           <div className="absolute top-8 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-md z-50 animate-in slide-in-from-top-4">
+             <div className="bg-white/95 backdrop-blur-md p-5 rounded-2xl shadow-xl border-2 border-slate-200">
+                <h2 className="text-xl font-bold text-slate-800 text-center mb-1">অপেক্ষা করা হচ্ছে...</h2>
+                <p className="text-sm text-slate-500 text-center mb-4">{room.players.length} / {room.maxPlayers} প্লেয়ার জয়েন করেছে</p>
+                
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
+                   <div className="flex-1 truncate text-xs font-mono text-slate-600 bg-white px-2 py-2 rounded-md border border-slate-200">
+                      {window.location.href}
+                   </div>
+                   <button 
+                      onClick={() => {
+                         navigator.clipboard.writeText(window.location.href);
+                         setIsCopied(true);
+                         setTimeout(() => setIsCopied(false), 2000);
+                      }}
+                      className={`text-white p-2.5 rounded-lg transition-colors shrink-0 ${isCopied ? 'bg-green-500' : 'bg-slate-900 hover:bg-slate-800'}`}
+                   >
+                      {isCopied ? <span className="text-xs font-bold px-1 text-white">Copied!</span> : <Copy className="w-4 h-4" />}
+                   </button>
+                </div>
+                <p className="text-xs text-center text-slate-400 mt-2">এই লিংক কপি করে বন্ধুদের শেয়ার করুন!</p>
+             </div>
+           </div>
+         )}
          
          <div 
            className="relative w-full h-full max-h-[85vmin] max-w-[85vmin] flex items-center justify-center shrink transition-transform duration-700 ease-in-out"
@@ -521,12 +547,12 @@ export default function App() {
          {room.gameState === 'finished' && (
              <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex items-center justify-center overflow-hidden">
                  <div className="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-full animate-in zoom-in mx-4">
-                    <h2 className="text-3xl font-black text-slate-800 mb-2">Game Over!</h2>
-                    <p className="text-sm text-slate-500 mb-6">Would you like to play again?</p>
+                    <h2 className="text-3xl font-black text-slate-800 mb-2">গেম ওভার!</h2>
+                    <p className="text-sm text-slate-500 mb-6">আবার খেলতে চান?</p>
                     <div className="flex flex-col gap-3">
-                        <button onClick={startNewGameClick} className="w-full py-3 bg-red-500 hover:bg-red-600 transition-colors text-white font-bold rounded-xl shadow-md">Restart Match</button>
+                        <button onClick={startNewGameClick} className="w-full py-3 bg-red-500 hover:bg-red-600 transition-colors text-white font-bold rounded-xl shadow-md">নতুন গেম (New Link)</button>
                         {playMode === 'online' && (
-                            <button onClick={() => { setRoomId(null); setRoom(null); setPlayMode(null); window.history.replaceState({}, document.title, window.location.pathname); }} className="w-full py-3 bg-slate-800 hover:bg-slate-900 transition-colors text-white font-bold rounded-xl shadow-md">New Invite (Lobby)</button>
+                            <button onClick={() => { setRoomId(null); setRoom(null); setPlayMode(null); window.history.replaceState({}, document.title, window.location.pathname); }} className="w-full py-3 bg-slate-800 hover:bg-slate-900 transition-colors text-white font-bold rounded-xl shadow-md">লবিতে ফিরে যান</button>
                         )}
                     </div>
                  </div>
