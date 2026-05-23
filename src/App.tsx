@@ -2,10 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
 import { Board } from './components/Board';
-import { Room, PlayerColor } from './types';
-import { Copy, PlusSquare, Dice5, SendHorizontal, RefreshCcw } from 'lucide-react';
+import { Room, PlayerColor, Player } from './types';
+import { Copy, PlusSquare, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, SendHorizontal, RefreshCcw, MonitorSmartphone, Smile } from 'lucide-react';
 
-const SOCKET_URL = import.meta.env.VITE_APP_URL || window.location.origin;
+const DiceIcon = ({ val, className }: { val: number | null, className?: string }) => {
+    switch (val) {
+        case 1: return <Dice1 className={className} />;
+        case 2: return <Dice2 className={className} />;
+        case 3: return <Dice3 className={className} />;
+        case 4: return <Dice4 className={className} />;
+        case 5: return <Dice5 className={className} />;
+        case 6: return <Dice6 className={className} />;
+        default: return <Dice5 className={className} />;
+    }
+};
+import { passTurn, rollDiceLocal, moveTokenLocal, ALL_COLORS } from './lib/gameEngine';
+import { AudioSystem } from './lib/audio';
+
+const SOCKET_URL = (import.meta as any).env?.VITE_APP_URL || window.location.origin;
 
 const colorMapClasses = {
   red: 'bg-red-500',
@@ -20,10 +34,38 @@ export default function App() {
   const [room, setRoom] = useState<Room | null>(null);
   const [myId, setMyId] = useState<string>('');
   const [myColor, setMyColor] = useState<PlayerColor | null>(null);
+  const [playMode, setPlayMode] = useState<'online' | 'offline' | null>(null);
   
   const [playerCountSelect, setPlayerCountSelect] = useState<number>(4);
   const [chatInput, setChatInput] = useState('');
   const [timerProgress, setTimerProgress] = useState<number>(100);
+
+  // Load offline state on startup if exists
+  useEffect(() => {
+     const offlineState = localStorage.getItem('ludoOfflineState');
+     if (offlineState && !window.location.search.includes('room=')) {
+         try {
+             const parsed = JSON.parse(offlineState);
+             if (parsed.gameState === 'playing') {
+                 setPlayMode('offline');
+                 setRoomId('OFFLINE');
+                 setMyColor('red');
+                 setRoom(parsed);
+             }
+         } catch(e) {}
+     }
+  }, []);
+
+  // Save offline state when room changes
+  useEffect(() => {
+     if (playMode === 'offline' && room) {
+         if (room.gameState === 'finished') {
+             localStorage.removeItem('ludoOfflineState');
+         } else {
+             localStorage.setItem('ludoOfflineState', JSON.stringify(room));
+         }
+     }
+  }, [room, playMode]);
 
   useEffect(() => {
     if (!room?.turnEndTime || room.gameState !== 'playing') {
@@ -35,13 +77,26 @@ export default function App() {
     const updateTimer = () => {
         const now = Date.now();
         const left = Math.max(0, room.turnEndTime! - now);
-        const pct = (left / 20000) * 100;
+        const pct = (left / 30000) * 100;
         setTimerProgress(pct);
+        
+        // Auto pass turn for offline if timer runs out
+        if (left <= 0 && playMode === 'offline') {
+           setRoom(prev => {
+              if (prev && prev.gameState === 'playing') {
+                  const r = passTurn(prev);
+                  r.turnEndTime = Date.now() + 30000;
+                  return {...r};
+              }
+              return prev;
+           });
+        }
+
         if (left > 0) req = requestAnimationFrame(updateTimer);
     };
     req = requestAnimationFrame(updateTimer);
     return () => cancelAnimationFrame(req);
-  }, [room?.turnEndTime, room?.gameState]);
+  }, [room?.turnEndTime, room?.gameState, playMode]);
   
   useEffect(() => {
     let savedId = localStorage.getItem('ludoPlayerId');
@@ -52,11 +107,14 @@ export default function App() {
     setMyId(savedId);
 
     const match = window.location.search.match(/room=([A-Z0-9]+)/);
-    if (match) setRoomId(match[1]);
+    if (match) {
+        setRoomId(match[1]);
+        setPlayMode('online');
+    }
   }, []);
 
   useEffect(() => {
-    if (!myId) return;
+    if (!myId || playMode === 'offline') return;
 
     const newSocket = io(SOCKET_URL, {
       transports: ['websocket', 'polling']
@@ -93,6 +151,7 @@ export default function App() {
     newSocket.on('gameReset', () => {
         setRoomId(null);
         setRoom(null);
+        setPlayMode(null);
         window.history.replaceState({}, document.title, window.location.pathname);
     });
 
@@ -101,10 +160,11 @@ export default function App() {
     return () => {
       newSocket.disconnect();
     };
-  }, [myId, roomId]);
+  }, [myId, roomId, playMode]);
 
   const createGame = () => {
     if (!socket) return;
+    setPlayMode('online');
     socket.emit('createRoom', { maxPlayers: playerCountSelect }, (res: any) => {
       window.history.pushState({}, '', `?room=${res.roomId}`);
       setRoomId(res.roomId);
@@ -114,27 +174,88 @@ export default function App() {
     });
   };
 
+  const createOfflineGame = () => {
+    let colorsToAssign = ALL_COLORS.slice(0, playerCountSelect);
+    if (playerCountSelect === 2) colorsToAssign = ["red", "yellow"];
+    if (playerCountSelect === 3) colorsToAssign = ["red", "green", "blue"];
+
+    const fakePlayers: Player[] = colorsToAssign.map(c => ({
+       id: `offline-${c}`,
+       color: c,
+       tokens: [0,0,0,0],
+       hasFinished: false
+    }));
+
+    setPlayMode('offline');
+    setRoomId('OFFLINE');
+    setMyColor('red'); 
+    
+    setRoom({
+       id: 'OFFLINE',
+       name: 'Local Match',
+       maxPlayers: playerCountSelect,
+       players: fakePlayers,
+       activeColor: 'red',
+       diceValue: null,
+       diceRolled: false,
+       gameState: 'playing',
+       sixCount: 0,
+       turnEndTime: Date.now() + 2000000 
+    });
+  };
+
   const rollDice = () => {
-    if (!socket || !room) return;
-    socket.emit('rollDice', { roomId: room.id, playerId: myId });
+    if (!room) return;
+    AudioSystem.init();
+    AudioSystem.playDiceRoll();
+    
+    if (playMode === 'offline') {
+       const activeId = room.players.find(p => p.color === room.activeColor)!.id;
+       setRoom({...rollDiceLocal(room, activeId)});
+    } else {
+       if (socket) socket.emit('rollDice', { roomId: room.id, playerId: myId });
+    }
   };
 
   const moveToken = (tokenIndex: number) => {
-    if (!socket || !room) return;
-    socket.emit('moveToken', { roomId: room.id, playerId: myId, tokenIndex });
+    if (!room) return;
+    AudioSystem.init();
+    
+    if (playMode === 'offline') {
+       const activeId = room.players.find(p => p.color === room.activeColor)!.id;
+       const oldState = JSON.stringify(room.players);
+       const newRoom = moveTokenLocal(room, activeId, tokenIndex);
+       
+       if (oldState !== JSON.stringify(newRoom.players)) {
+          const countZeros = (r: Room) => r.players.reduce((acc, p) => acc + p.tokens.filter(t => t === 0).length, 0);
+          if (countZeros(newRoom) > countZeros(room)) {
+             AudioSystem.playCut();
+          } else {
+             AudioSystem.playMove();   
+          }
+          if (newRoom.gameState === 'finished') AudioSystem.playWin();
+       }
+       setRoom({...newRoom});
+    } else {
+       AudioSystem.playMove();
+       if (socket) socket.emit('moveToken', { roomId: room.id, playerId: myId, tokenIndex });
+    }
   };
 
   const sendChat = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!socket || !room || !chatInput.trim()) return;
+    if (!socket || !room || !chatInput.trim() || playMode === 'offline') return;
     socket.emit('chatMessage', { roomId: room.id, playerId: myId, message: chatInput });
     setChatInput('');
   };
 
   const startNewGame = () => {
-      if(!socket || !room) return;
       if(window.confirm("End this game and start a new one? All data will be removed immediately.")) {
-          socket.emit('startNewGame', {roomId: room.id});
+          if (playMode === 'offline') {
+              createOfflineGame();
+          } else if(socket && room) {
+              socket.emit('startNewGame', {roomId: room.id});
+          }
       }
   }
 
@@ -162,12 +283,41 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  <button 
-                    onClick={createGame}
-                    className="w-full py-4 mt-6 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-                  >
-                    <PlusSquare className="w-5 h-5" /> Start Game
-                  </button>
+                  <div className="flex flex-col gap-3 mt-6">
+                    <button 
+                      onClick={createOfflineGame}
+                      className="w-full py-4 bg-red-500 text-white rounded-xl font-bold text-lg hover:bg-red-600 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+                    >
+                      <MonitorSmartphone className="w-5 h-5" /> Play Offline (Local)
+                    </button>
+                    <button 
+                      onClick={createGame}
+                      className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+                    >
+                      <PlusSquare className="w-5 h-5" /> Play Online (Invite)
+                    </button>
+                  </div>
+                  
+                  <div className="mt-8 text-left border-t border-slate-100 pt-6">
+                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Join with Invite Link</h3>
+                     <div className="flex gap-2">
+                        <input 
+                           type="text" 
+                           placeholder="Paste link or room code" 
+                           className="flex-1 bg-slate-100 border-none outline-none focus:ring-2 focus:ring-red-500 rounded-xl px-4 py-3 text-slate-800 text-sm font-medium"
+                           onChange={(e) => {
+                               const val = e.target.value;
+                               const match = val.match(/room=([A-Z0-9]+)/);
+                               if (match) {
+                                  window.location.href = `/?room=${match[1]}`;
+                               } else if (val.match(/^[A-Z0-9]+$/) && val.length > 3) {
+                                  window.location.href = `/?room=${val}`;
+                               }
+                           }}
+                        />
+                     </div>
+                     <p className="text-xs text-slate-400 mt-2">Paste a friend's link to join their online game</p>
+                  </div>
                 </div>
               ) : (
                 <div className="animate-pulse space-y-4">
@@ -181,7 +331,7 @@ export default function App() {
     );
   }
 
-  const myTurn = room.activeColor === myColor;
+  const myTurn = playMode === 'offline' ? true : room.activeColor === myColor;
 
   return (
     <div className="fixed inset-0 bg-slate-100 flex flex-col font-sans overflow-hidden">
@@ -236,7 +386,8 @@ export default function App() {
              <Board 
                players={room.players} 
                onTokenClick={moveToken} 
-               myId={myId}
+               rollDice={rollDice}
+               myId={playMode === 'offline' ? room.players.find(p => p.color === room.activeColor)!.id : myId}
                activeColor={room.activeColor}
                diceRolled={room.diceRolled}
                diceValue={room.diceValue}
@@ -264,13 +415,11 @@ export default function App() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 flex items-center justify-center relative">
+                    <div className="w-10 h-10 flex items-center justify-center relative shadow-sm rounded bg-white border border-slate-200">
                       {room.diceValue ? (
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-900 border border-slate-700 text-white rounded-[4px] md:rounded-lg flex items-center justify-center text-lg md:text-xl font-black shadow drop-shadow-md animate-in zoom-in">
-                           {room.diceValue}
-                        </div>
+                        <DiceIcon val={room.diceValue} className="w-8 h-8 md:w-9 md:h-9 text-slate-800 animate-in zoom-in" />
                       ) : (
-                        <Dice5 className={`w-6 h-6 md:w-8 md:h-8 text-slate-300 ${myTurn ? 'animate-bounce text-slate-400' : ''}`} />
+                        <DiceIcon val={null} className={`w-8 h-8 md:w-9 md:h-9 text-slate-200 ${myTurn ? 'animate-bounce text-slate-300' : ''}`} />
                       )}
                     </div>
 
@@ -291,36 +440,56 @@ export default function App() {
          )}
          
          {room.gameState === 'finished' && (
-             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex items-center justify-center">
-                 <div className="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-full animate-in zoom-in">
+             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex items-center justify-center overflow-hidden">
+                 <div className="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-full animate-in zoom-in mx-4">
                     <h2 className="text-3xl font-black text-slate-800 mb-2">Game Over!</h2>
-                    <p className="text-sm text-slate-500 mb-6">Return to lobby to play again</p>
-                    <button onClick={startNewGame} className="w-full py-3 bg-red-500 text-white font-bold rounded-xl shadow-md">New Game</button>
+                    <p className="text-sm text-slate-500 mb-6">Would you like to play again?</p>
+                    <div className="flex flex-col gap-3">
+                        <button onClick={startNewGame} className="w-full py-3 bg-red-500 hover:bg-red-600 transition-colors text-white font-bold rounded-xl shadow-md">Restart Match</button>
+                        {playMode === 'online' && (
+                            <button onClick={() => { setRoomId(null); setRoom(null); setPlayMode(null); window.history.replaceState({}, document.title, window.location.pathname); }} className="w-full py-3 bg-slate-800 hover:bg-slate-900 transition-colors text-white font-bold rounded-xl shadow-md">New Invite (Lobby)</button>
+                        )}
+                    </div>
                  </div>
              </div>
          )}
       </main>
 
       {/* compact chat */}
-      <footer className="bg-white border-t border-slate-200 p-1.5 shrink-0 shadow-sm z-50 h-14 relative">
-         <form onSubmit={sendChat} className="flex gap-2 max-w-[400px] mx-auto h-full">
-            <input 
-              type="text" 
-              value={chatInput}
-              onChange={e => setChatInput(e.target.value)}
-              placeholder="Type message..."
-              className="flex-1 bg-slate-100 border-none outline-none focus:ring-1 focus:ring-slate-300 rounded-md px-3 py-1 text-slate-800 text-[16px]"
-              maxLength={40}
-            />
-            <button 
-              type="submit"
-              disabled={!chatInput.trim()}
-              className="bg-slate-900 text-white w-12 h-full rounded-md flex items-center justify-center shrink-0 disabled:opacity-50 hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              <SendHorizontal className="w-5 h-5 pointer-events-none" />
-            </button>
-         </form>
-      </footer>
+      {playMode !== 'offline' && (
+        <footer className="bg-white border-t border-slate-200 shrink-0 shadow-sm z-50 relative flex flex-col items-center">
+           <div className="w-full max-w-[400px] flex justify-between px-2 py-1 bg-slate-50 border-b border-slate-100">
+               {['👍', '😂', '🔥', '😡', '😱', '👏'].map(emoji => (
+                   <button 
+                      key={emoji}
+                      onClick={() => {
+                          if (socket && room && playMode === 'online') {
+                              socket.emit('chatMessage', { roomId: room.id, playerId: myId, message: emoji });
+                          }
+                      }}
+                       className="text-lg hover:scale-125 transition-transform p-1 cursor-pointer active:scale-95"
+                   >{emoji}</button>
+               ))}
+           </div>
+           <form onSubmit={sendChat} className="flex gap-2 w-full max-w-[400px] p-1.5 h-14">
+              <input 
+                type="text" 
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                placeholder="Type message..."
+                className="flex-1 bg-slate-100 border-none outline-none focus:ring-1 focus:ring-slate-300 rounded-md px-3 py-1 text-slate-800 text-[16px]"
+                maxLength={40}
+              />
+              <button 
+                type="submit"
+                disabled={!chatInput.trim()}
+                className="bg-slate-900 text-white w-12 h-full rounded-md flex items-center justify-center shrink-0 disabled:opacity-50 hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <SendHorizontal className="w-5 h-5 pointer-events-none" />
+              </button>
+           </form>
+        </footer>
+      )}
     </div>
   );
 }

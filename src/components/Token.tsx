@@ -68,15 +68,15 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
         if (pos > prevPos && pos - prevPos <= 6 && prevPos > 0 && pos !== 57) { 
             for(let i = prevPos + 1; i <= pos; i++) {
                 const c = getTokenCoordinates(color, i, tokenIdx);
-                if (i === pos) {
-                   await controls.start({ left: `${(c.x + offsetX)/15*100}%`, top: `${(c.y + offsetY)/15*100}%`, scale, transition: { duration: 0.2, type: "tween" } });
+                 if (i === pos) {
+                   await controls.start({ left: `${(c.x + offsetX)/15*100}%`, top: `${(c.y + offsetY)/15*100}%`, scale, transition: { duration: 0.12, ease: "linear" } });
                 } else {
-                   await controls.start({ left: `${c.x/15*100}%`, top: `${c.y/15*100}%`, scale: 1, transition: { duration: 0.2, type: "tween" } });
+                   await controls.start({ left: `${c.x/15*100}%`, top: `${c.y/15*100}%`, scale: 1, transition: { duration: 0.12, ease: "linear" } });
                 }
             }
         } else {
             const c = getTokenCoordinates(color, pos, tokenIdx);
-            controls.start({ left: `${(c.x + offsetX)/15*100}%`, top: `${(c.y + offsetY)/15*100}%`, scale, transition: { duration: 0.3 } });
+            controls.start({ left: `${(c.x + offsetX)/15*100}%`, top: `${(c.y + offsetY)/15*100}%`, scale, transition: { duration: 0.2, ease: "easeOut" } });
         }
         setPrevPos(pos);
      };
@@ -85,7 +85,7 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
          animateHop();
      } else {
          const c = getTokenCoordinates(color, pos, tokenIdx);
-         controls.start({ left: `${(c.x + offsetX)/15*100}%`, top: `${(c.y + offsetY)/15*100}%`, scale, transition: { duration: 0.25 } });
+         controls.start({ left: `${(c.x + offsetX)/15*100}%`, top: `${(c.y + offsetY)/15*100}%`, scale, transition: { duration: 0.2, ease: "easeInOut" } });
      }
   }, [pos, offsetX, offsetY, scale, color, tokenIdx, controls, prevPos]);
 
@@ -95,18 +95,23 @@ export const Token: React.FC<TokenProps> = ({ color, tokenIdx, isMine, canMove, 
     <motion.div
       initial={false}
       animate={controls}
-      transition={{ type: "spring", stiffness: 500, damping: 25 }}
       style={{
          width: `${(1 / 15) * 100}%`,
          height: `${(1.3 / 15) * 100}%`,
          transform: 'translate(0%, -25%)'
       }}
       className={`absolute flex items-end justify-center ${pulseClass}`}
-      onClick={() => {
-        if (isPlayable) onClick();
+      onClick={(e) => {
+        if (isPlayable) {
+           e.stopPropagation();
+           onClick();
+        }
       }}
     >
       <div className={`w-[85%] h-full relative flex items-end justify-center transition-transform ${isPlayable ? 'hover:scale-110' : ''}`}>
+         {/* Fixed Circle Base Indicator */}
+         <div className="absolute bottom-[2%] w-[80%] aspect-square rounded-full bg-black/20 shadow-sm blur-[1px] pointer-events-none" />
+         
          {isPlayable && <GearRing color={bgColors[color]} darkColor={darkColors[color]} />}
          <TokenPinSVG color={bgColors[color]} />
       </div>

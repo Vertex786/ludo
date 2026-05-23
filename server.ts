@@ -67,7 +67,7 @@ function passTurn(room: Room) {
   room.diceValue = null;
   room.diceRolled = false;
   room.sixCount = 0;
-  room.turnEndTime = Date.now() + 20000;
+  room.turnEndTime = Date.now() + 30000;
 }
 
 io.on("connection", (socket) => {
@@ -122,7 +122,7 @@ io.on("connection", (socket) => {
       room.gameState = "playing";
       // Determine active player (the first entered color)
       room.activeColor = room.players[0].color;
-      room.turnEndTime = Date.now() + 20000;
+      room.turnEndTime = Date.now() + 30000;
     }
 
     io.to(room.id).emit("roomState", room);
@@ -141,7 +141,7 @@ io.on("connection", (socket) => {
     // const dice = 6; // for testing
     room.diceValue = dice;
     room.diceRolled = true;
-    room.turnEndTime = Date.now() + 20000;
+    room.turnEndTime = Date.now() + 30000;
 
     if (dice === 6) {
       room.sixCount += 1;
@@ -249,7 +249,7 @@ io.on("connection", (socket) => {
         if (extraTurn || dice === 6) {
           room.diceRolled = false;
           room.diceValue = null;
-          room.turnEndTime = Date.now() + 20000;
+          room.turnEndTime = Date.now() + 30000;
         } else {
           passTurn(room);
         }
